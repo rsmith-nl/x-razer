@@ -5,9 +5,9 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-27 22:43:50 +0200
-// Last modified: 2025-08-28T00:48:25+0200
+// Last modified: 2025-08-28T00:49:57+0200
 
-// Compile with “cc -o razer-get-serial razer-get-serial.c -lusb”
+// Compile with “cc -std=c11 -o razer-get-serial razer-get-serial.c -lusb”
 
 #include <stdint.h>
 #include <stdbool.h>
