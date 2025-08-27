@@ -50,15 +50,11 @@ int main(int argc, char *argv[])
   libusb_device_descriptor desc = {0};
   libusb_device_handle *handle = 0;
   for (int32_t k = 0; k < device_count; k++) {
-    if (libusb_get_device_descriptor(device_list[k], &desc) != 0) {
-      goto exit;
-    }
+    if (libusb_get_device_descriptor(device_list[k], &desc) != 0) {goto exit;}
     if (desc.idVendor != 0x1532) {
       continue;
     }
-    if (libusb_open(device_list[k], &handle) != 0) {
-      continue;
-    }
+    if (libusb_open(device_list[k], &handle) != 0) {continue;}
     unsigned char buf[80] = {0};
     if (libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, buf, 79) > 0) {
       printf("Manufacturer: %s\n", buf);
@@ -73,9 +69,7 @@ int main(int argc, char *argv[])
       goto exit;
     }
   }
-  if (handle == 0) {
-    goto exit;
-  }
+  if (handle == 0) goto exit;
   // First control message
   int bytes_transferred = 0;
   Razer_report serial_message = {0};
@@ -93,7 +87,7 @@ int main(int argc, char *argv[])
   }
   serial_message.crc = checksum;
   bytes_transferred = libusb_control_transfer(handle, 0x21, 0x09, 0x300, 0x01,
-                      (uint8_t*)&serial_message, 90, 0);
+      (uint8_t*)&serial_message, 90, 0);
   if (bytes_transferred != 90) {
     //fprintf(stderr, "First control message failed.\n");
     goto exit;
@@ -101,7 +95,7 @@ int main(int argc, char *argv[])
   // Second control message
   Razer_report return_message;
   bytes_transferred = libusb_control_transfer(handle, 0xa1, 0x01, 0x300, 0x01,
-                      (uint8_t*)&return_message, 90, 0);
+      (uint8_t*)&return_message, 90, 0);
   if (bytes_transferred != 90) {
     //fprintf(stderr, "Second control message failed.\n");
     goto exit;
@@ -114,6 +108,7 @@ int main(int argc, char *argv[])
   unsigned char sn[80] = {0};
   memcpy(sn, return_message.arguments, datasize);
   printf("Serial number: %s\n", sn);
+
 exit:
   libusb_free_device_list(device_list, 1);
   libusb_exit(0);
