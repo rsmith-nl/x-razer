@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-27 22:43:50 +0200
-// Last modified: 2025-08-28T00:43:52+0200
+// Last modified: 2025-08-28T00:48:25+0200
 
 // Compile with “cc -o razer-get-serial razer-get-serial.c -lusb”
 
@@ -78,14 +78,15 @@ int main(int argc, char *argv[])
   }
   // First control message
   int bytes_transferred = 0;
-  Razer_report serial_message = {0};
-  serial_message.status = 0x00;
-  serial_message.transaction_id = 0xff;
-  serial_message.remaining_packets = 0x00;
-  serial_message.protocol_type = 0x00;
-  serial_message.data_size = 0x16;
-  serial_message.command_class = 0x00;
-  serial_message.command_id = 0x82;
+  Razer_report serial_message = {
+    .status = 0x00,
+    .transaction_id = 0xff,
+    .remaining_packets = 0x00,
+    .protocol_type = 0x00,
+    .data_size = 0x16,
+    .command_class = 0x00,
+    .command_id = 0x82,
+  };
   uint8_t checksum = 0;
   uint8_t *u8ptr = (uint8_t*)&serial_message.transaction_id;
   for (int32_t k = 2; k < 88; k++) {
