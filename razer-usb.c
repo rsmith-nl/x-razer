@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:01:44 +0200
-// Last modified: 2025-08-28T17:14:38+0200
+// Last modified: 2025-08-28T17:25:09+0200
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -40,7 +40,10 @@ uint8_t calculate_crc(Razer_report *report)
 
 void usb_init(USB_data *out)
 {
-  const uint16_t keyboard_ids[] = {0x0228};
+  const uint16_t keyboard_ids[] = {
+    0x0228, // Blackwidow Elite
+    0x021E, // Ornata Chroma
+  };
   if (out == 0) {
     return;
   }
