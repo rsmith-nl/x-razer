@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-08-28T20:02:57+0200
+// Last modified: 2025-08-28T21:44:13+0200
 
 #include "rc.h"
 
@@ -19,7 +19,7 @@
 #define SKIPWS(ptr) \
   while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
 
-#define CLAMP(val) ((val)<0)?0:((val)>255?255:0)
+#define CLAMP(val) ((val)<0)?0:((val)>255?255:(val))
 
 
 static const char *filename = "/.x-razerrc";
