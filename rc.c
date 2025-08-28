@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-08-28T19:02:50+0200
+// Last modified: 2025-08-28T20:02:57+0200
 
 #include "rc.h"
 
@@ -18,6 +18,9 @@
 // Macro to skip whitespace in a string.
 #define SKIPWS(ptr) \
   while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
+
+#define CLAMP(val) ((val)<0)?0:((val)>255?255:0)
+
 
 static const char *filename = "/.x-razerrc";
 
@@ -60,10 +63,13 @@ void read_rc(RC_data *result)
   cur = buf;
   SKIPWS(cur);
   long red = strtol(cur, &cur, 10);
+  CLAMP(red);
   SKIPWS(cur);
   long green = strtol(cur, &cur, 10);
+  CLAMP(green);
   SKIPWS(cur);
   long blue = strtol(cur, &cur, 10);
+  CLAMP(blue);
   if (errno == EINVAL) {
     return;
   }

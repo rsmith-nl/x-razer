@@ -5,14 +5,15 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-08-28T18:55:06+0200
+// Last modified: 2025-08-28T19:58:23+0200
 
 #pragma once
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
   bool ok;
-  int red, green, blue;
+  uint8_t red, green, blue;
 } RC_data;
 
 // Read or write ~/.x-razerrc.

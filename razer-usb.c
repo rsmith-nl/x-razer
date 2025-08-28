@@ -5,14 +5,16 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:01:44 +0200
-// Last modified: 2025-08-28T18:38:47+0200
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <libusb.h>
-#include <string.h>
+// Last modified: 2025-08-28T19:52:44+0200
 
 #include "razer-usb.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+
+#include <libusb.h>
 
 typedef struct {
   uint8_t status;
@@ -103,7 +105,29 @@ void usb_exit(void)
   libusb_exit(0);
 }
 
-bool usb_set_color(int red, int green, int blue)
+bool usb_set_color(USB_data *kbd, uint8_t red, uint8_t green, uint8_t blue)
 {
+  assert(kbd);
+  // control message
+  Razer_report out = {
+    .status = 0x00,
+    .transaction_id = 0x3f,
+    .remaining_packets = 0x0000,
+    .protocol_type = 0x00,
+    .data_size = 0x09,
+    .command_class = 0x0f,
+    .command_id = 0x02,
+    .arguments = "\x01\x05\x01\x00\x00\x01",
+  };
+  out.arguments[6] = red;
+  out.arguments[7] = green;
+  out.arguments[8] = blue;
+  out.crc = calculate_crc(&out);
+  int bytes = 0;
+  bytes = libusb_control_transfer(kbd->handle, 0x21, 0x09, 0x300, 0x01,
+                                  (uint8_t*)&out, 90, 0);
+  if (bytes == 90) {
+    return true;
+  }
   return false;
 }
