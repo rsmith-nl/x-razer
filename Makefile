@@ -26,7 +26,7 @@ LIBS += -lm -lusb
 ##### Maintainer stuff goes here:
 DISTFILES = Makefile
 # Source files.
-SRCS = x-razer.c cairo-imgui.c razer-usb.c
+SRCS = x-razer.c cairo-imgui.c razer-usb.c rc.c
 
 ##### No editing necessary beyond this point
 ALL = $(BASENAME)

@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:01:44 +0200
-// Last modified: 2025-08-28T18:16:43+0200
+// Last modified: 2025-08-28T18:38:47+0200
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -103,4 +103,7 @@ void usb_exit(void)
   libusb_exit(0);
 }
 
-
+bool usb_set_color(int red, int green, int blue)
+{
+  return false;
+}
