@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T15:39:30+0200
+// Last modified: 2025-08-28T16:39:49+0200
 
 #include <stdbool.h>
 #include <string.h>
@@ -16,6 +16,7 @@
 #include <cairo/cairo.h>
 
 #include "cairo-imgui.h"
+#include "razer-usb.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,11 +27,13 @@ typedef struct {
   SDL_Texture *texture;
   GUI_context *ctx;
   GUI_rgb clr;
-  bool rc;
+  bool rc, kb;
+  USB_data kb_data;
 } State;
 
 #define SKIPWS(ptr) \
   while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
+
 
 #define BUF_SIZE 4096
 // Read the RC file.
@@ -95,6 +98,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   s.ctx = &ctx;
   // Read rcfile.
   s.rc = read_rc(&s.clr);
+  // Initialize USB.
+  s.kb = usb_init(&s.kb_data);
   // Set a theme for the GUI.
   gui_theme_dark(&ctx);
   // Make context available to other callbacks.
@@ -180,8 +185,14 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   //char buf[80] = {0};
   //snprintf(buf, 79, "x = %d, y = %d", s->ctx->mouse_x, s->ctx->mouse_y);
   //gui_label(s->ctx, 180, 130, buf);
+  // Show messages.
   if (s->rc == false) {
-    gui_label(s->ctx, 180, 150, "Could not read RC file!");
+    gui_label(s->ctx, 180, 130, "Could not read RC file!");
+  }
+  if (s->kb == false) {
+    gui_label(s->ctx, 180, 150, "Could not initialize USB!");
+  } else {
+    gui_label(s->ctx, 180, 150, s->kb_data.product_name);
   }
   // Apply changes button
   if (gui_button(s->ctx, 400, 120, "Apply")) {
@@ -205,6 +216,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   State *s = appstate;
   (void)result;
   // Clean up.
+  usb_exit();
   SDL_DestroyTexture(s->texture);
   SDL_DestroyWindow(s->window);
   SDL_DestroyRenderer(s->renderer);

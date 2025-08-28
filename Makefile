@@ -21,12 +21,12 @@ PKGLIBS != pkg-config --libs sdl3 cairo
 LFLAGS += $(PKGLIBS)
 
 # Other libraries to link against
-LIBS += -lm
+LIBS += -lm -lusb
 
 ##### Maintainer stuff goes here:
 DISTFILES = Makefile
 # Source files.
-SRCS = x-razer.c cairo-imgui.c
+SRCS = x-razer.c cairo-imgui.c razer-usb.c
 
 ##### No editing necessary beyond this point
 ALL = $(BASENAME)
