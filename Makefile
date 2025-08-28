@@ -48,7 +48,7 @@ clean:  ## Remove all generated files.
 .PHONY: install
 install: $(BASENAME)  ## Install the program.
 	install -d $(BINDIR)
-	install -m 755 $(BASENAME) $(BINDIR)
+	install -s -m 755 $(BASENAME) $(BINDIR)
 
 .PHONY: style
 style:  ## Reformat source code using astyle.
