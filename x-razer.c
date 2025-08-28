@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T18:52:40+0200
+// Last modified: 2025-08-28T19:23:37+0200
 
 #include "cairo-imgui.h"
 #include "razer-usb.h"
@@ -139,7 +139,6 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   // Apply changes button
   if (gui_button(s->ctx, 400, 120, "Apply")) {
     // TODO: set color using libusb.
-    // TODO: Write changes to rc file.
     write_rc(&s->clr);
   }
   // You can still draw to s->ctx here...

@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-08-28T18:52:25+0200
+// Last modified: 2025-08-28T19:02:50+0200
 
 #include "rc.h"
 
@@ -19,6 +19,7 @@
 #define SKIPWS(ptr) \
   while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
 
+static const char *filename = "/.x-razerrc";
 
 #define BUF_SIZE 4096
 // Read the RC file.
@@ -33,7 +34,6 @@ void read_rc(RC_data *result)
   if (home == 0) {
     return;
   }
-  const char *filename = "/.x-razerrc";
   size_t bufused = 0;
   char buf[BUF_SIZE] = {0};
   char *cur = buf;
@@ -76,4 +76,22 @@ void read_rc(RC_data *result)
 
 void write_rc(RC_data *result)
 {
+  assert(result);
+  result->ok = false;
+  const char *home = getenv("HOME");
+  if (home == 0) {
+    return;
+  }
+  char buf[BUF_SIZE] = {0};
+  char *cur = buf;
+  memcpy(buf, home, strnlen(home, BUF_SIZE-1));
+  cur += strnlen(buf, BUF_SIZE-1);
+  memcpy(cur, filename, strlen(filename));
+  FILE *rcfile = fopen(buf, "w");
+  if (rcfile == 0) {
+    return;
+  }
+  fprintf(rcfile, "%d\n%d\n%d\n", result->red, result->green, result->blue);
+  fclose(rcfile);
+  result->ok = true;
 }
