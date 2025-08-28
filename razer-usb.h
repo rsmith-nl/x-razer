@@ -5,16 +5,18 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:30:17 +0200
-// Last modified: 2025-08-28T16:32:36+0200
+// Last modified: 2025-08-28T16:50:57+0200
 
 #pragma once
 
+#include <stdbool.h>
 #include <libusb.h>
 
 typedef struct {
+  bool ok;
   char product_name[80];
   libusb_device_handle *handle;
 } USB_data;
 
-extern bool usb_init(USB_data *out);
+extern void usb_init(USB_data *out);
 extern void usb_exit(void);

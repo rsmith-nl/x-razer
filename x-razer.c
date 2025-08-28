@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T16:39:49+0200
+// Last modified: 2025-08-28T16:54:59+0200
 
 #include <stdbool.h>
 #include <string.h>
@@ -27,8 +27,8 @@ typedef struct {
   SDL_Texture *texture;
   GUI_context *ctx;
   GUI_rgb clr;
-  bool rc, kb;
-  USB_data kb_data;
+  bool rc;
+  USB_data kb;
 } State;
 
 #define SKIPWS(ptr) \
@@ -99,7 +99,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   // Read rcfile.
   s.rc = read_rc(&s.clr);
   // Initialize USB.
-  s.kb = usb_init(&s.kb_data);
+  usb_init(&s.kb);
   // Set a theme for the GUI.
   gui_theme_dark(&ctx);
   // Make context available to other callbacks.
@@ -187,12 +187,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   //gui_label(s->ctx, 180, 130, buf);
   // Show messages.
   if (s->rc == false) {
-    gui_label(s->ctx, 180, 130, "Could not read RC file!");
+    gui_label(s->ctx, 160, 130, "Could not read RC file!");
   }
-  if (s->kb == false) {
-    gui_label(s->ctx, 180, 150, "Could not initialize USB!");
+  if (s->kb.ok == false) {
+    gui_label(s->ctx, 160, 150, "Could not initialize USB!");
   } else {
-    gui_label(s->ctx, 180, 150, s->kb_data.product_name);
+    gui_label(s->ctx, 160, 150, s->kb.product_name);
   }
   // Apply changes button
   if (gui_button(s->ctx, 400, 120, "Apply")) {
