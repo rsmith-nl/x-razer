@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T20:06:29+0200
+// Last modified: 2025-08-28T21:10:31+0200
 
 #include "cairo-imgui.h"
 #include "razer-usb.h"
@@ -14,6 +14,8 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -33,6 +35,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
   (void)argc;
   (void)argv;
+  // Detach if connected to a terminal.
+  if (isatty(fileno(stdout))) {
+    pid_t pid = fork();
+    if (pid == -1) {
+      fprintf(stderr, "fork failed!\n");
+    } else if (pid > 0) { // parent process
+      exit(0);
+    }
+  }
   // Initialize state needed in all functions.
   static State s = {0};
   // Create GUI context.
