@@ -23,6 +23,9 @@ LFLAGS += $(PKGLIBS)
 # Other libraries to link against
 LIBS += -lm -lusb
 
+PREFIX = ${HOME}/.local
+BINDIR = $(PREFIX)/bin
+
 ##### Maintainer stuff goes here:
 DISTFILES = Makefile
 # Source files.
@@ -41,6 +44,11 @@ cairo-imgui.c: cairo-imgui.h
 .PHONY: clean
 clean:  ## Remove all generated files.
 	rm -f $(ALL) *~ core gmon.out backup-*
+
+.PHONY: install
+install: $(BASENAME)  ## Install the program.
+	install -d $(BINDIR)
+	install -m 755 $(BASENAME) $(BINDIR)
 
 .PHONY: style
 style:  ## Reformat source code using astyle.
