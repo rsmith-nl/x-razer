@@ -5,87 +5,42 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T16:54:59+0200
+// Last modified: 2025-08-28T18:34:43+0200
 
-#include <stdbool.h>
-#include <string.h>
+#include "cairo-imgui.h"
+#include "razer-usb.h"
+
+#include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <cairo/cairo.h>
 
-#include "cairo-imgui.h"
-#include "razer-usb.h"
-
-#include <stdio.h>
-#include <stdlib.h>
+typedef struct {
+  bool ok;
+  int red, green, blue;
+} RC_data;
 
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
   SDL_Texture *texture;
   GUI_context *ctx;
-  GUI_rgb clr;
-  bool rc;
+  RC_data clr;
   USB_data kb;
 } State;
 
+// Macro to skip whitespace in a string.
 #define SKIPWS(ptr) \
   while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
 
-
-#define BUF_SIZE 4096
-// Read the RC file.
-// Returns true on success, false on failure.
-// If succesful, the color is stored in result.
-bool read_rc(GUI_rgb *result)
-{
-  const char *home = getenv("HOME");
-  if (home == 0) {
-    return false;
-  }
-  const char *filename = "/.x-razerrc";
-  size_t bufused = 0;
-  char buf[BUF_SIZE] = {0};
-  char *cur = buf;
-  memcpy(buf, home, strnlen(home, BUF_SIZE-1));
-  bufused = strnlen(buf, BUF_SIZE-1);
-  cur += bufused;
-  memcpy(cur, filename, strlen(filename));
-  FILE *rcfile = fopen(buf, "r");
-  if (rcfile == 0) {
-    return false;
-  }
-  fseek(rcfile, 0, SEEK_END);
-  size_t read_size = (size_t)ftell(rcfile);
-  if (read_size >= BUF_SIZE) {
-    read_size = BUF_SIZE-1;
-  }
-  rewind(rcfile);
-  memset(buf, 0, BUF_SIZE);
-  read_size = fread(buf, read_size, 1, rcfile);
-  fclose(rcfile);
-  if (read_size == 0) {
-    return false;
-  }
-  cur = buf;
-  // Skip whitespace;
-  SKIPWS(cur);
-  long red = strtol(cur, &cur, 10);
-  SKIPWS(cur);
-  long green = strtol(cur, &cur, 10);
-  SKIPWS(cur);
-  long blue = strtol(cur, &cur, 10);
-  if (errno == EINVAL) {
-    return false;
-  }
-  result->r = (double)red;
-  result->g = (double)green;
-  result->b = (double)blue;
-  return true;
-}
-
+static void read_rc(RC_data *result);
+static void write_rc(RC_data *result);
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
@@ -97,7 +52,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   static GUI_context ctx = {0};
   s.ctx = &ctx;
   // Read rcfile.
-  s.rc = read_rc(&s.clr);
+  read_rc(&s.clr);
   // Initialize USB.
   usb_init(&s.kb);
   // Set a theme for the GUI.
@@ -137,9 +92,9 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   gui_label(s->ctx, 10, 54, "Green");
   gui_label(s->ctx, 10, 84, "Blue");
   static int red = 0, green = 0, blue = 0;
-  red = s->clr.r;
-  green = s->clr.g;
-  blue = s->clr.b;
+  red = s->clr.red;
+  green = s->clr.green;
+  blue = s->clr.blue;
   static GUI_rgb samplecolor = {0};
   samplecolor.r = (double)red/255.0;
   samplecolor.g = (double)green/255.0;
@@ -147,15 +102,15 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   static char bred[10] = {0}, bgreen[10] = {0}, bblue[10] = {0};
   if (gui_slider(s->ctx, 60, 20, &red)) {
     samplecolor.r = (double)red/255.0;
-    s->clr.r = red;
+    s->clr.red = red;
   }
   if (gui_slider(s->ctx, 60, 50, &green)) {
     samplecolor.g = (double)green/255.0;
-    s->clr.g = green;
+    s->clr.green = green;
   }
   if (gui_slider(s->ctx, 60, 80, &blue)) {
     samplecolor.b = (double)blue/255.0;
-    s->clr.b = blue;
+    s->clr.blue = blue;
   }
   snprintf(bred, 9, "%d", red);
   snprintf(bgreen, 9, "%d", green);
@@ -186,11 +141,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   //snprintf(buf, 79, "x = %d, y = %d", s->ctx->mouse_x, s->ctx->mouse_y);
   //gui_label(s->ctx, 180, 130, buf);
   // Show messages.
-  if (s->rc == false) {
+  if (s->clr.ok == false) {
     gui_label(s->ctx, 160, 130, "Could not read RC file!");
   }
-  if (s->kb.ok == false) {
-    gui_label(s->ctx, 160, 150, "Could not initialize USB!");
+  if (s->kb.errormsg != 0) {
+    gui_label(s->ctx, 160, 150, s->kb.errormsg);
   } else {
     gui_label(s->ctx, 160, 150, s->kb.product_name);
   }
@@ -198,6 +153,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   if (gui_button(s->ctx, 400, 120, "Apply")) {
     // TODO: set color using libusb.
     // TODO: Write changes to rc file.
+    write_rc(&s->clr);
   }
   // You can still draw to s->ctx here...
   // End of GUI definition
@@ -220,4 +176,62 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   SDL_DestroyTexture(s->texture);
   SDL_DestroyWindow(s->window);
   SDL_DestroyRenderer(s->renderer);
+}
+
+#define BUF_SIZE 4096
+// Read the RC file.
+// If succesful, the color is stored in result.
+// result->ok is true if reading succeeded.
+void read_rc(RC_data *result)
+{
+  assert(result);
+  result->ok = false;
+  result->red = result->green = result->blue = 0;
+  const char *home = getenv("HOME");
+  if (home == 0) {
+    return;
+  }
+  const char *filename = "/.x-razerrc";
+  size_t bufused = 0;
+  char buf[BUF_SIZE] = {0};
+  char *cur = buf;
+  memcpy(buf, home, strnlen(home, BUF_SIZE-1));
+  bufused = strnlen(buf, BUF_SIZE-1);
+  cur += bufused;
+  memcpy(cur, filename, strlen(filename));
+  FILE *rcfile = fopen(buf, "r");
+  if (rcfile == 0) {
+    return;
+  }
+  fseek(rcfile, 0, SEEK_END);
+  size_t read_size = (size_t)ftell(rcfile);
+  if (read_size >= BUF_SIZE) {
+    read_size = BUF_SIZE-1;
+  }
+  rewind(rcfile);
+  memset(buf, 0, BUF_SIZE);
+  read_size = fread(buf, read_size, 1, rcfile);
+  fclose(rcfile);
+  if (read_size == 0) {
+    return;
+  }
+  cur = buf;
+  SKIPWS(cur);
+  long red = strtol(cur, &cur, 10);
+  SKIPWS(cur);
+  long green = strtol(cur, &cur, 10);
+  SKIPWS(cur);
+  long blue = strtol(cur, &cur, 10);
+  if (errno == EINVAL) {
+    return;
+  }
+  result->red = red;
+  result->green = green;
+  result->blue = blue;
+  result->ok = true;
+  return;
+}
+
+void write_rc(RC_data *result)
+{
 }

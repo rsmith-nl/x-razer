@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:30:17 +0200
-// Last modified: 2025-08-28T16:50:57+0200
+// Last modified: 2025-08-28T18:17:03+0200
 
 #pragma once
 
@@ -13,10 +13,12 @@
 #include <libusb.h>
 
 typedef struct {
-  bool ok;
+  const char *errormsg;
   char product_name[80];
   libusb_device_handle *handle;
 } USB_data;
 
+// If the initialization is succecfull, out->errormsg is 0.
+// Otherwise it points to an error message.
 extern void usb_init(USB_data *out);
 extern void usb_exit(void);
