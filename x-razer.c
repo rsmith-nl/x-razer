@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-18 14:53:46 +0200
-// Last modified: 2025-08-28T15:27:03+0200
+// Last modified: 2025-08-28T15:39:30+0200
 
 #include <stdbool.h>
 #include <string.h>
@@ -28,6 +28,9 @@ typedef struct {
   GUI_rgb clr;
   bool rc;
 } State;
+
+#define SKIPWS(ptr) \
+  while (*(ptr) == ' ' || *(ptr) == '\t' || *(ptr) == '\r' || *(ptr) == '\n') {(ptr)++;}
 
 #define BUF_SIZE 4096
 // Read the RC file.
@@ -65,17 +68,11 @@ bool read_rc(GUI_rgb *result)
   }
   cur = buf;
   // Skip whitespace;
-  while (*cur == ' ' || *cur == '\t' || *cur == '\r' || *cur == '\n') {
-    cur++;
-  }
+  SKIPWS(cur);
   long red = strtol(cur, &cur, 10);
-  while (*cur == ' ' || *cur == '\t' || *cur == '\r' || *cur == '\n') {
-    cur++;
-  }
+  SKIPWS(cur);
   long green = strtol(cur, &cur, 10);
-  while (*cur == ' ' || *cur == '\t' || *cur == '\r' || *cur == '\n') {
-    cur++;
-  }
+  SKIPWS(cur);
   long blue = strtol(cur, &cur, 10);
   if (errno == EINVAL) {
     return false;
