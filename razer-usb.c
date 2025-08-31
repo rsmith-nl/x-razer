@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 16:01:44 +0200
-// Last modified: 2025-08-28T19:52:44+0200
+// Last modified: 2025-08-31T13:29:43+0200
 
 #include "razer-usb.h"
 
@@ -95,6 +95,7 @@ void usb_init(USB_data *out)
                                            (uint8_t*)&out->product_name, 79) != 0) {
       break;
     } else {
+      out->errormsg = errors[2];
     }
   }
   libusb_free_device_list(device_list, 1);
