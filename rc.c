@@ -5,9 +5,10 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-08-28T21:44:13+0200
+// Last modified: 2025-09-01T23:04:30+0200
 
 #include "rc.h"
+#include "sbuf.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -24,43 +25,35 @@
 
 static const char *filename = "/.x-razerrc";
 
-#define BUF_SIZE 4096
 // Read the RC file.
 // If succesful, the color is stored in result.
 // result->ok is true if reading succeeded.
 void read_rc(RC_data *result)
 {
   assert(result);
+  Sbuf sbuf = {0};
   result->ok = false;
   result->red = result->green = result->blue = 0;
   const char *home = getenv("HOME");
   if (home == 0) {
     return;
   }
-  size_t bufused = 0;
-  char buf[BUF_SIZE] = {0};
-  char *cur = buf;
-  memcpy(buf, home, strnlen(home, BUF_SIZE-1));
-  bufused = strnlen(buf, BUF_SIZE-1);
-  cur += bufused;
-  memcpy(cur, filename, strlen(filename));
-  FILE *rcfile = fopen(buf, "r");
+  sbuf_append(&sbuf, home, strnlen(home, SBUF_MAX-1));
+  sbuf_append(&sbuf, filename, strlen(filename));
+  if (sbuf.error == true) {
+    return;
+  }
+  FILE *rcfile = fopen(sbuf.data, "r");
   if (rcfile == 0) {
     return;
   }
-  fseek(rcfile, 0, SEEK_END);
-  size_t read_size = (size_t)ftell(rcfile);
-  if (read_size >= BUF_SIZE) {
-    read_size = BUF_SIZE-1;
-  }
-  rewind(rcfile);
-  memset(buf, 0, BUF_SIZE);
-  read_size = fread(buf, read_size, 1, rcfile);
+  sbuf_reset(&sbuf);
+  sbuf.used = fread(sbuf.data, 1, SBUF_MAX, rcfile);
   fclose(rcfile);
-  if (read_size == 0) {
+  if (sbuf.used == 0) {
     return;
   }
-  cur = buf;
+  char *cur = sbuf.data;
   SKIPWS(cur);
   long red = strtol(cur, &cur, 10);
   CLAMP(red);
@@ -83,17 +76,18 @@ void read_rc(RC_data *result)
 void write_rc(RC_data *result)
 {
   assert(result);
+  Sbuf sbuf = {0};
   result->ok = false;
   const char *home = getenv("HOME");
   if (home == 0) {
     return;
   }
-  char buf[BUF_SIZE] = {0};
-  char *cur = buf;
-  memcpy(buf, home, strnlen(home, BUF_SIZE-1));
-  cur += strnlen(buf, BUF_SIZE-1);
-  memcpy(cur, filename, strlen(filename));
-  FILE *rcfile = fopen(buf, "w");
+  sbuf_append(&sbuf, home, strnlen(home, SBUF_MAX-1));
+  sbuf_append(&sbuf, filename, strlen(filename));
+    if (sbuf.error == true) {
+    return;
+  }
+  FILE *rcfile = fopen(sbuf.data, "w");
   if (rcfile == 0) {
     return;
   }

@@ -29,7 +29,7 @@ BINDIR = $(PREFIX)/bin
 ##### Maintainer stuff goes here:
 DISTFILES = Makefile
 # Source files.
-SRCS = x-razer.c cairo-imgui.c razer-usb.c rc.c
+SRCS = x-razer.c cairo-imgui.c razer-usb.c rc.c sbuf.c
 
 ##### No editing necessary beyond this point
 ALL = $(BASENAME)
