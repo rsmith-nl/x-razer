@@ -5,10 +5,15 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-26 14:04:09 +0200
-// Last modified: 2025-08-27T20:23:54+0200
+// Last modified: 2026-01-17T21:51:29+0100
 
 #include "cairo-imgui.h"
 #include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <cairo/cairo.h>
+#include <SDL3/SDL.h>
+#include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
 
 static double m_width, m_height;
@@ -40,6 +45,7 @@ void gui_begin(SDL_Renderer *renderer, SDL_Texture *texture, GUI_context *out)
   cairo_text_extents(out->ctx, "M", &ext);
   m_width = ext.width;
   m_height = ext.height;
+  out->counter = 1;
 }
 
 void gui_end(GUI_context *ctx)
@@ -55,6 +61,7 @@ void gui_end(GUI_context *ctx)
   SDL_UnlockTexture(ctx->texture);
   SDL_RenderTexture(ctx->renderer, ctx->texture, 0, 0);
   SDL_RenderPresent(ctx->renderer);
+  ctx->maxid = ctx->counter;
 }
 
 void gui_theme_light(GUI_context *ctx)
@@ -97,12 +104,25 @@ SDL_AppResult gui_process_events(GUI_context *ctx, SDL_Event *event)
     case SDL_EVENT_QUIT:
       return SDL_APP_SUCCESS;
       break;
-    case SDL_EVENT_KEY_UP:
+    case SDL_EVENT_KEY_DOWN:
       if (event->key.key == 'q' || event->key.key == SDLK_ESCAPE) {
         return SDL_APP_SUCCESS;
+      } else if (event->key.key == SDLK_TAB) {
+        if (event->key.mod & (SDL_KMOD_LSHIFT|SDL_KMOD_RSHIFT)) {
+          ctx->id--;
+          if (ctx->id < 0) {
+            ctx->id = ctx->maxid;
+          }
+        } else {
+          ctx->id++;
+          if (ctx->id > ctx->maxid) {
+            ctx->id = 1;
+          }
+        }
+      } else {
+        ctx->keycode = event->key.key;
+        ctx->mod = event->key.mod;
       }
-      ctx->keycode = event->key.key;
-      ctx->mod = event->key.mod;
       break;
     case SDL_EVENT_MOUSE_MOTION:
       ctx->mouse_x = event->motion.x;
@@ -129,6 +149,8 @@ SDL_AppResult gui_process_events(GUI_context *ctx, SDL_Event *event)
 bool gui_button(GUI_context *c, double x, double y, const char *label)
 {
   assert(c);
+  // All interactive widgets should get an ID by increasing the counter.
+  int32_t id = c->counter++;
   double rv = false;
   double offset = 10.0;
   cairo_text_extents_t ext;
@@ -140,9 +162,10 @@ bool gui_button(GUI_context *c, double x, double y, const char *label)
   cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
   cairo_rectangle(c->ctx, x, y, width, height);
   cairo_stroke(c->ctx);
-  // draw/Fill inside if mouse is inside.
-  if (c->mouse_x >= x && (c->mouse_x - x) <= width &&
-      c->mouse_y >= y && (c->mouse_y - y) <= height) {
+  // draw/Fill inside if mouse is inside, or we have the highlight.
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= width &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
     cairo_new_path(c->ctx);
     cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
     cairo_rectangle(c->ctx, x+1, y+1, width-2, height-2);
@@ -167,6 +190,7 @@ bool gui_button(GUI_context *c, double x, double y, const char *label)
 void gui_label(GUI_context *c, double x, double y, const char *label)
 {
   assert(c);
+  // Labels don't interact, so they have no id.
   cairo_text_extents_t ext;
   cairo_text_extents(c->ctx, label, &ext);
   // Draw the label
@@ -180,6 +204,7 @@ void gui_label(GUI_context *c, double x, double y, const char *label)
 bool gui_checkbox(GUI_context *c, double x, double y, const char *label, bool *state)
 {
   assert(c);
+  int32_t id = c->counter++;
   double rv = false;
   double offset = 5.0;
   double boxsize = m_width>m_height?m_width:m_height;
@@ -192,9 +217,10 @@ bool gui_checkbox(GUI_context *c, double x, double y, const char *label, bool *s
   cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
   cairo_rectangle(c->ctx, x, y, boxsize, boxsize);
   cairo_stroke(c->ctx);
-  // draw/Fill inside if mouse is inside.
-  if (c->mouse_x >= x && (c->mouse_x - x) <= width &&
-      c->mouse_y >= y && (c->mouse_y - y) <= height) {
+  // draw/Fill inside if mouse is inside, or we have the highlight.
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= width &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
     cairo_new_path(c->ctx);
     cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
     cairo_rectangle(c->ctx, x+1, y+1, boxsize-2, boxsize-2);
@@ -233,6 +259,7 @@ bool gui_radiobuttons(GUI_context *c, double x, double y, int nlabels,
   assert(c);
   assert(labels);
   assert(nlabels > 0);
+  int32_t id = c->counter++;
   double rv = false;
   double offset = 5.0;
   //double boxsize = 14.0;
@@ -284,15 +311,16 @@ bool gui_radiobuttons(GUI_context *c, double x, double y, int nlabels,
     cury += heights[k];
   }
   cairo_fill(c->ctx);
-  // draw/Fill inside if mouse is inside.
-  if (c->mouse_x >= x && (c->mouse_x - x) <= width &&
-      c->mouse_y >= y && (c->mouse_y - y) <= height) {
+  // draw/Fill inside if mouse is inside, or we have the highlight.
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= width &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
     cairo_new_path(c->ctx);
     cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
     cury = y + boxsize/2;
     curx = x + boxsize/2;
     for (int k = 0; k < nlabels; k++) {
-      if (fabs((double)c->mouse_y - cury) < exty[k]/2) {
+      if ((fabs((double)c->mouse_y - cury) < exty[k]/2)) {
         // This is the label!
         cairo_new_path(c->ctx);
         cairo_arc(c->ctx, curx, cury, boxsize/2 - 3, 0.0, 2*M_PI);
@@ -304,6 +332,16 @@ bool gui_radiobuttons(GUI_context *c, double x, double y, int nlabels,
         if (c->button_released || c->keycode == SDLK_RETURN) {
           rv = true;
           *state = k;
+        } else if (c->keycode == SDLK_UP) {
+          *state = --k;
+          if (*state < 0) {
+            *state = nlabels-1;
+          }
+        } else if (c->keycode == SDLK_DOWN) {
+          *state = ++k;
+          if (*state == nlabels) {
+            *state = 0;
+          }
         }
         break;
       };
@@ -314,20 +352,21 @@ bool gui_radiobuttons(GUI_context *c, double x, double y, int nlabels,
 }
 
 void gui_colorsample(GUI_context *c, const double x, const double y,
-                     const double w, const double h, const GUI_rgb *color)
+                     const double w, const double h, const GUI_rgb *state)
 {
   assert(c);
-  assert(color);
+  assert(state);
   cairo_new_path(c->ctx);
-  cairo_set_source_rgb(c->ctx, color->r, color->g, color->b);
+  cairo_set_source_rgb(c->ctx, state->r, state->g, state->b);
   cairo_rectangle(c->ctx, x, y, w, h);
   cairo_fill(c->ctx);
 }
 
-bool gui_slider(GUI_context *c, const double x, const double y, int *value)
+bool gui_slider(GUI_context *c, const double x, const double y, int *state)
 {
   assert(c);
-  assert(value);
+  assert(state);
+  int32_t id = c->counter++;
   bool changed = false;
   const double xsize = 20.0;
   const double ysize = 10.0;
@@ -339,40 +378,240 @@ bool gui_slider(GUI_context *c, const double x, const double y, int *value)
   cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
   cairo_rectangle(c->ctx, x, y, width, height);
   cairo_stroke(c->ctx);
-  if (c->mouse_x >= x && (c->mouse_x - x) <= width &&
-      c->mouse_y >= y && (c->mouse_y - y) <= height) {
+  // draw/Fill inside if mouse is inside, or we have the highlight.
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= width &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
     // draw inside if mouse is inside.
     cairo_new_path(c->ctx);
     cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
     cairo_rectangle(c->ctx, x+2, y+2, width-4, height-4);
     cairo_stroke(c->ctx);
-    // Update value if mouse is inside and button is pressed
+    // Update state if mouse is inside and button is pressed
     if (c->button_pressed || c->keycode == SDLK_RETURN) {
-      int newvalue = round(c->mouse_x - x - offset - xsize/2.0);
-      if (newvalue != *value) {
-        *value = newvalue;
+      int newstate = round(c->mouse_x - x - offset - xsize/2.0);
+      if (newstate != *state) {
+        *state = newstate;
         changed = true;
       }
     }
     if (c->keycode == SDLK_LEFT) {
-      (*value)--;
+      (*state)--;
       changed = true;
     } else if (c->keycode == SDLK_RIGHT) {
-      (*value)++;
+      (*state)++;
+      changed = true;
+    } else if (c->keycode == SDLK_HOME) {
+      *state = 0;
+      changed = true;
+    }  else if (c->keycode == SDLK_END) {
+      *state = 255;
       changed = true;
     }
   }
-  // Clamp value within allowed range.
-  if (*value < 0) {
-    *value = 0;
-  } else if (*value > 255) {
-    *value = 255;
+  // Clamp state within allowed range.
+  if (*state < 0) {
+    *state = 0;
+  } else if (*state > 255) {
+    *state = 255;
   }
   // Draw slider
-  double sliderpos = x + (double)*value + offset;
+  double sliderpos = x + (double)*state + offset;
   cairo_new_path(c->ctx);
   cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
   cairo_rectangle(c->ctx, sliderpos, y + offset, xsize, ysize);
   cairo_fill(c->ctx);
   return changed;
 }
+
+bool gui_ispinner(GUI_context *c, const double x, const double y,
+                 int32_t min, int32_t max, int32_t*state)
+{
+  assert(c);
+  assert(state);
+  assert(max > min);
+  int32_t id = c->counter++;
+  bool rv = false;
+  // Determine the amount of characters needed
+  double maxw = ceil(log10(fabs((double)max))) * m_width;
+  const double offset = 6.0;
+  const double boxsize = 12.0;
+  double width = maxw + 2 * offset + 2*boxsize;
+  double height = m_height + 2 * offset;
+  // Draw the outline.
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_rectangle(c->ctx, x, y, width, height);
+  cairo_stroke(c->ctx);
+  // Draw the spinner buttons.
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_move_to(c->ctx, x+offset+maxw, y+offset+m_height);
+  cairo_rel_line_to(c->ctx, boxsize, 0);
+  cairo_rel_line_to(c->ctx, -boxsize/2, -boxsize);
+  cairo_rel_line_to(c->ctx, -boxsize/2, boxsize);
+  cairo_close_path(c->ctx);
+  cairo_fill(c->ctx);
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_move_to(c->ctx, x+offset+maxw+boxsize, y+offset);
+  cairo_rel_line_to(c->ctx, boxsize, 0);
+  cairo_rel_line_to(c->ctx, -boxsize/2, boxsize);
+  cairo_rel_line_to(c->ctx, -boxsize/2, -boxsize);
+  cairo_close_path(c->ctx);
+  cairo_fill(c->ctx);
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= width &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
+    // Draw inside accent if mouse is inside.
+    cairo_new_path(c->ctx);
+    cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
+    cairo_rectangle(c->ctx, x+2, y+2, width-4, height-4);
+    cairo_stroke(c->ctx);
+    if (c->button_pressed) {
+      double xdist =  c->mouse_x - x - offset - maxw;
+      if (xdist < boxsize) {
+        (*state)++;
+        rv = true;
+      } else if (xdist > boxsize) {
+        (*state)--;
+        rv = true;
+      }
+    }
+    // Update the value when up or down arrows are used.
+    switch (c->keycode) {
+      case SDLK_UP:
+        (*state)++;
+        rv = true;
+        break;
+      case SDLK_DOWN:
+        (*state)--;
+        rv = true;
+        break;
+      case SDLK_HOME:
+        *state = min;
+        rv = true;
+        break;
+      case SDLK_END:
+        *state = max;
+        rv = true;
+        break;
+      default:
+        break;
+    }
+  }
+  // Clamp the state between min and max.
+  if (*state > max) {
+    *state = max;
+  } else if (*state < min) {
+    *state = min;
+  }
+  // Draw the number
+  char buf[20];
+  snprintf(buf, 19, "%d", *state);
+  cairo_text_extents_t ext;
+  cairo_text_extents(c->ctx, buf, &ext);
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_move_to(c->ctx, x+offset, y+offset+ext.height);
+  cairo_show_text(c->ctx, buf);
+  return rv;
+}
+
+bool gui_editbox(GUI_context *c, const double x, const double y, const double w,
+                 GUI_editstate *state)
+{
+  assert(c);
+  assert(state);
+  int32_t id = c->counter++;
+  const double offset = 6.0;
+  double height = m_height + 2 * offset;
+  bool rv = false;
+  // Draw the outline.
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_rectangle(c->ctx, x, y, w, height);
+  cairo_stroke(c->ctx);
+  if ((c->mouse_x >= x && (c->mouse_x - x) <= w &&
+      c->mouse_y >= y && (c->mouse_y - y) <= height)|| c->id == id) {
+    c->id = id;
+    // Draw inside accent if mouse is inside.
+    cairo_new_path(c->ctx);
+    cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
+    cairo_rectangle(c->ctx, x+2, y+2, w-4, height-4);
+    cairo_stroke(c->ctx);
+    // Process keys
+    if (c->keycode == SDLK_LEFT) { // move cursor left
+      if (state->cursorpos > 0) {
+        state->cursorpos--;
+      }
+    } else if (c->keycode == SDLK_RIGHT) { // move cursor right
+      if (state->cursorpos < state->used) {
+        state->cursorpos++;
+      }
+    } else if (c->keycode >= 0x20 && c->keycode <= 0x7e) { // insert regular key.
+      char keycode = (char)c->keycode;
+      if (c->mod & (SDL_KMOD_SHIFT|SDL_KMOD_CAPS)) {  // Handle capitals.
+        keycode -= 32;
+      }
+      if (state->cursorpos == state->used) {  // cursor at end
+        state->data[state->used++] = keycode;
+        state->cursorpos++;
+      } else if (state->cursorpos < state->used) {  // cursor inside text
+        for (int m = state->used; m >= state->cursorpos; m--) {
+          state->data[m+1] = state->data[m];
+        }
+        state->data[state->cursorpos++] = keycode;
+        state->used++;
+
+      }
+    } else if (c->keycode == SDLK_END) {
+      state->cursorpos = state->used;
+    } else if (c->keycode == SDLK_HOME) {
+      state->cursorpos = 0;
+    } else if (c->keycode == SDLK_BACKSPACE) {
+      if (state->cursorpos > 0 && state->cursorpos <= state->used) {
+        for (int move = state->cursorpos-1; move < state->used; move++) {
+          state->data[move] = state->data[move+1];
+        }
+        state->data[state->used--] = 0;
+        state->cursorpos--;
+      }
+    } else if (c->keycode == SDLK_DELETE) {
+      if (state->cursorpos >= 0 && state->cursorpos <= state->used) {
+        for (int move = state->cursorpos; move < state->used; move++) {
+          state->data[move] = state->data[move+1];
+        }
+        state->data[state->used--] = 0;
+        if (state->cursorpos > 0) {
+          state->cursorpos--;
+        }
+      }
+    }
+    // fill the cumulative offset array
+    double cum_off = 0.0;
+    for (int j = 0; j < state->cursorpos; j++) {
+      char str[2] = {0};
+       cairo_text_extents_t ext;
+      str[0] = state->data[j];
+      cairo_text_extents(c->ctx, str, &ext);
+      cum_off += ext.x_advance;
+    }
+    // TODO: draw the cursor position
+    cairo_new_path(c->ctx);
+    cairo_set_source_rgb(c->ctx, c->acc.r, c->acc.g, c->acc.b);
+    cairo_move_to(c->ctx, x+offset+cum_off, y+offset);
+    cairo_rel_line_to(c->ctx, 0, m_height);
+    cairo_stroke(c->ctx);
+  }
+  // TODO: Draw the text, clip if longer than window.
+  cairo_text_extents_t ext;
+  cairo_text_extents(c->ctx, state->data, &ext);
+  cairo_new_path(c->ctx);
+  cairo_set_source_rgb(c->ctx, c->fg.r, c->fg.g, c->fg.b);
+  cairo_move_to(c->ctx, x+offset, y+offset+ext.height);
+  cairo_show_text(c->ctx, state->data);
+
+  return rv;
+}
+
