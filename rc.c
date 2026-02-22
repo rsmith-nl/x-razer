@@ -5,7 +5,7 @@
 // Author: R.F. Smith <rsmith@xs4all.nl>
 // SPDX-License-Identifier: Unlicense
 // Created: 2025-08-28 18:48:01 +0200
-// Last modified: 2025-09-01T23:04:30+0200
+// Last modified: 2026-02-22T11:47:28+0100
 
 #include "rc.h"
 #include "sbuf.h"
@@ -13,7 +13,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
 
 // Macro to skip whitespace in a string.
@@ -38,8 +37,8 @@ void read_rc(RC_data *result)
   if (home == 0) {
     return;
   }
-  sbuf_append(&sbuf, home, strnlen(home, SBUF_MAX-1));
-  sbuf_append(&sbuf, filename, strlen(filename));
+  sbuf_appends(&sbuf, home);
+  sbuf_appends(&sbuf, filename);
   if (sbuf.error == true) {
     return;
   }
@@ -48,7 +47,7 @@ void read_rc(RC_data *result)
     return;
   }
   sbuf_reset(&sbuf);
-  sbuf.used = fread(sbuf.data, 1, SBUF_MAX, rcfile);
+  sbuf.used = fread(sbuf.data, 1, SBUF_SIZE, rcfile);
   fclose(rcfile);
   if (sbuf.used == 0) {
     return;
@@ -82,8 +81,8 @@ void write_rc(RC_data *result)
   if (home == 0) {
     return;
   }
-  sbuf_append(&sbuf, home, strnlen(home, SBUF_MAX-1));
-  sbuf_append(&sbuf, filename, strlen(filename));
+  sbuf_appends(&sbuf, home);
+  sbuf_appends(&sbuf, filename);
     if (sbuf.error == true) {
     return;
   }
